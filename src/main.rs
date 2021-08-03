@@ -12,119 +12,67 @@ const CYAN: [u8; 3] = [42, 161, 152];
 const GREEN: [u8; 3] = [133, 153, 0];
 
 
+use hex_coords::*;
 
+use image::{GenericImage, GenericImageView, ImageBuffer, RgbImage};
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
-enum HexCoord
+fn hexagonalize_image(img: &RgbImage, size: f32) -> RgbImage
 {
-    Offset(i32, i32),
-    Cube(i32, i32, i32),
-    Axial(i32, i32),
-    Doubled(i32, i32)
-}
-impl HexCoord
-{
-    fn to_cube(&self) -> Self
+    let (w, h) = img.dimensions();
+
+    let mut grid = HexGrid::<([u32; 3], u32)>::new();
+
+    for x in 0..w
     {
-        match self
+        for y in 0..h
         {
-            Self::Cube(..) => *self,
-            Self::Axial(q, r) => Self::Cube(*q, *r, -q-r),
-            Self::Offset(col, row) => 
+            let pix = PixelCoord(x as i32, y as i32);
+            let hex = pix.to_hex(size);
+
+            let val: [u8; 3] = img[(x, y)].0;
+
+            let val: [u32; 3] = [val[0] as u32,
+                                 val[1] as u32,
+                                 val[2] as u32];
+            if let Some(mut thing) = grid.get_mut(&hex)
             {
-                let x = col - (row - (col & 1)) / 2;
-                let y = *row;
-                let z = -x-y;
-                Self::Cube(x, y, z)
-            },
-            Self::Doubled(col, row) => 
-            {
-                let x = *col;
-                let z = (row + col)/2;
-                let y = -x-z;
-                Self::Cube(x, y, z)
+                thing.0[0] += val[0];
+                thing.0[1] += val[1];
+                thing.0[2] += val[2];
+                thing.1 += 1;
             }
+            else
+            {
+                grid.set(hex, (val, 1));
+            }
+            
         }
     }
-    fn to_axial(&self) -> Self
-    {
-        if let HexCoord::Cube(x, y, z) = self.to_cube()
-        {
-            HexCoord::Axial(x, z)}
-        else
-        {
-            unreachable!();
-        }
-    }
-    fn to_pixel(&self, size: f32) -> PixelCoord
-    {
-        if let HexCoord::Cube(q, _, r) = self.to_cube()
-        {
-            let (q, r) = (q as f32, r as f32);
+    
+    ImageBuffer::from_fn(w, h, |x, y| {
 
-            let x = size * (3f32).sqrt() * (q + r/2.0);
-            let y = size * 3.0/2.0 * r;
+        let pix = PixelCoord(x as i32, y as i32);
+        let hex = pix.to_hex(size);
 
-            PixelCoord(x as i32, y as i32)
-        }
-        else
-        {
-            unreachable!();
-        }
-    }
-    fn cube_from_float(x: f32, y: f32, z: f32) -> Self
-    {
-        let mut rx = x.round();
-        let mut ry = y.round();
-        let mut rz = z.round();
+        let (val, n) = grid.get(&hex).unwrap();
 
-        let x_diff = (rx - x).abs();
-        let y_diff = (ry - y).abs();
-        let z_diff = (rz - z).abs();
-
-        if x_diff > y_diff && x_diff > z_diff
-        {
-            rx = -ry-rz;
-        }
-        else if y_diff > z_diff
-        {
-            ry = -rx-rz;
-        }
-        else
-        {
-            rz = -rx-ry;
-        }
-
-        HexCoord::Cube(rx as i32, ry as i32, rz as i32)
-    }
-}
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
-struct PixelCoord(i32, i32);
-
-impl PixelCoord
-{
-    fn to_hex(&self, size: f32) -> HexCoord
-    {
-        let sqrt3 = 3f32.sqrt();
-        let (x, y) = (self.0 as f32, self.1 as f32);
-        let q = (sqrt3/3.0*x - y/3.0) / size;
-        let r = y*2.0/3.0/size;
-
+        let r = (val[0]/n) as u8;
+        let g = (val[1]/n) as u8;
+        let b = (val[2]/n) as u8;
         
-        HexCoord::cube_from_float(q, -q-r, r)
-
-    }
+        
+        image::Rgb([r, g, b])
+    })
+    
 }
-
 
 fn main() {
-    use std::collections::HashMap;
-    println!("{:?}", HexCoord::Cube(1, -1, 0));
+     use std::collections::HashMap;
+    println!("{:?}", HexCoord(1, -1, 0));
 
     //let size = 6.0;
     let size = 20.0;
     {
-        use image::{GenericImage, GenericImageView, ImageBuffer, RgbImage};
 
         // Construct a new RGB ImageBuffer with the specified width and height.
         let img: RgbImage = ImageBuffer::new(512, 512);
@@ -153,14 +101,22 @@ fn main() {
         img.save("test.png").unwrap();
     }
     {
-        let coords = vec![PixelCoord(5, 14),
-                          PixelCoord(5, 15),
+        let coords = vec![PixelCoord(5, 50),
+                          PixelCoord(5, 51),
         ];
 
         let hexs: Vec<_> = coords.iter().map(|pix| pix.to_hex(size)).collect();
         for (pix, hex) in coords.iter().zip(hexs.iter())
         {
-            println!("{:?} -> {:?}", pix, hex);
+            println!("{:?} -> {:?} -> {:?}", pix, hex, hex.to_pixel(size));
         }
+    }
+
+
+    {
+        let img: RgbImage = image::open("teto.jpg").unwrap().to_rgb();
+        
+        let img2 = hexagonalize_image(&img, 20.);
+        img2.save("hexagonalized.png");
     }
 }
