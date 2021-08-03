@@ -6,19 +6,13 @@ impl HexCoord
     // untested
     pub fn to_pixel(&self, size: f32) -> PixelCoord
     {
-        if let HexCoord(q, _, r) = *self
-        {
-            let (q, r) = (q as f32, r as f32);
+        let HexCoord(q, _, r) = *self;
+        let (q, r) = (q as f32, r as f32);
 
-            let x = size * (3f32).sqrt() * (q + r/2.0);
-            let y = size * 3.0/2.0 * r;
+        let x = size * (3f32).sqrt() * (q + r/2.0);
+        let y = size * 3.0/2.0 * r;
 
-            PixelCoord(x as i32, y as i32)
-        }
-        else
-        {
-            unreachable!();
-        }
+        PixelCoord(x as i32, y as i32)
     }
 
     pub fn from_floats(x: f32, y: f32, z: f32) -> Self

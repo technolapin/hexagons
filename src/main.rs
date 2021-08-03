@@ -1,20 +1,7 @@
-const BASE03: [u8; 3] = [0, 43, 54];
-const BASE01: [u8; 3] = [88, 110, 117];
-const BASE00: [u8; 3] = [101, 123, 131];
-const BASE0: [u8; 3] = [131, 148, 150];
-const BASE1: [u8; 3] = [147, 161, 161];
-const BASE3: [u8; 3] = [253, 246, 227];
-const YELLOW: [u8; 3] = [181, 137, 0];
-const ORANGE: [u8; 3] = [203, 75, 22];
-const RED: [u8; 3] = [220, 50, 47];
-const BLUE: [u8; 3] = [38, 139, 210];
-const CYAN: [u8; 3] = [42, 161, 152];
-const GREEN: [u8; 3] = [133, 153, 0];
-
 
 use hex_coords::*;
 
-use image::{GenericImage, GenericImageView, ImageBuffer, RgbImage};
+use image::{ImageBuffer, RgbImage};
 
 fn hexagonalize_image(img: &RgbImage, size: f32) -> RgbImage
 {
@@ -66,57 +53,11 @@ fn hexagonalize_image(img: &RgbImage, size: f32) -> RgbImage
     
 }
 
-fn main() {
-     use std::collections::HashMap;
-    println!("{:?}", HexCoord(1, -1, 0));
-
-    //let size = 6.0;
-    let size = 20.0;
-    {
-
-        // Construct a new RGB ImageBuffer with the specified width and height.
-        let img: RgbImage = ImageBuffer::new(512, 512);
-
-        // Construct a new by repeated calls to the supplied closure.
-        let ampl = 8;
-
-        let palette = vec![
-            BASE03, BASE01, BASE0, BASE1 
-        ];
-        
-        let mut ids = HashMap::new();
-        
-        let mut img = ImageBuffer::from_fn(1000, 1000, |x, y| {
-            let pix = PixelCoord(x as i32, y as i32);
-            let hex = pix.to_hex(size);
-            if !ids.contains_key(&hex)
-            {
-                let id: usize = rand::random();
-                ids.insert(hex.clone(), id);
-            }
-
-            image::Rgb(palette[ids[&hex] % palette.len()])
-        });
-
-        img.save("test.png").unwrap();
-    }
-    {
-        let coords = vec![PixelCoord(5, 50),
-                          PixelCoord(5, 51),
-        ];
-
-        let hexs: Vec<_> = coords.iter().map(|pix| pix.to_hex(size)).collect();
-        for (pix, hex) in coords.iter().zip(hexs.iter())
-        {
-            println!("{:?} -> {:?} -> {:?}", pix, hex, hex.to_pixel(size));
-        }
-    }
-
-
-    {
-        let img: RgbImage = image::open("teto.jpg").unwrap().to_rgb();
-        
-        let img2 = hexagonalize_image(&img, 20.);
-        img2.save("hexagonalized.png");
-    }
+fn main() -> Result<(), image::ImageError>
+{
+    let img: RgbImage = image::open("/home/clement/Wallpapers/39905312_p0.jpg")?.to_rgb8();
+    
+    let img2 = hexagonalize_image(&img, 10.);
+    img2.save("hexagonalized.png")?;
+    Ok(())
 }
